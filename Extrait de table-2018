@@ -1,0 +1,174 @@
+# ACP-Table de l'INRA 2018-
+
+# Auteurs : Lionel Elzear
+
+################################################################################
+
+# 1. Installation des packages
+install.packages(c("FactoMineR", "factoextra","corrplot","missMDA"))
+library(FactoMineR)
+library(factoextra)
+library(corrplot)
+library(missMDA)
+
+################################################################################
+#### -ordinateur 
+fichier <- file.choose() 
+INRAT <- read.csv("LE CHEMIN DU FICHIER -> INRA2018C.csv", header=T, sep=";")   
+
+rownames(INRAT) = INRAT$Code # la première colonne (occupation des sosl) est intégrer comme label
+INRAT[1] <- NULL
+View(INRAT)
+
+################################################################################
+
+# 3. extraire les individus actifs et les variables actives pour l’ACP
+INRATA <- INRAT[c(3:92)]
+
+
+library(dplyr)
+INRAT <- INRAT %>% mutate_if(is.character, as.factor)
+
+################################################################################
+
+# 4. Calculer l’ACP sur les individus/variables actifs
+res.pca <- PCA(INRATA, graph = FALSE)
+## 4.1 Le résultat de la fonction PCA()
+print(res.pca)
+## 4.2 Valeurs propres / Variances
+### a. Nous examinons les valeurs propres pour déterminer le nombre de composantes principales à prendre en considération.
+library("factoextra")
+eig.val <- get_eigenvalue(res.pca)
+eig.val
+### b. Le graphique des valeurs propres peut être généré à l’aide de la fonction fviz_eig () ou fviz_screeplot () [package factoextra].
+fviz_eig(res.pca, addlabels = TRUE, ylim = c(0, 50))
+## 4.3 Graphique des variables
+### a. extraction des résultats, pour les variables, à partir de l’ACP 
+var <- get_pca_var(res.pca)
+var
+### b. Les différents éléments peuvent être consultés comme suit:
+#### Coordonnées
+head(var$coord)
+#### Cos2: qualité de répresentation
+head(var$cos2)
+#### Contributions aux composantes principales
+head(var$contrib)
+## 4.4 Cercle de corrélation
+### a. Coordonnées des variables
+head(var$coord, 4)
+fviz_pca_var(res.pca, col.var = "black")
+### b. Qualité de représentation
+head(var$cos2, 4)
+library("corrplot")
+corrplot(var$cos2, is.corr=FALSE)
+### c. bar plot du cosinus carré des variables en utilisant la fonction fviz_cos2() [dans factoextra]:
+#### Cos2 total des variables sur Dim.1 et Dim.2
+fviz_cos2(res.pca, choice = "var", axes = 1:2)
+#### Colorer en fonction du cos2: qualité de représentation
+fviz_pca_var(res.pca, col.var = "cos2",
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE # Évite le chevauchement de texte
+)
+#### Changer la transparence en fonction du cos2
+fviz_pca_var(res.pca, alpha.var = "cos2")
+#### Contributions des variables aux axes principaux
+head(var$contrib, 4)
+#### les variables les plus contributives pour chaque dimension:
+library("corrplot")
+corrplot(var$contrib, is.corr=FALSE) 
+#### Contributions des variables à PC1
+fviz_contrib(res.pca, choice = "var", axes = 1, top = 10)
+#### Contributions des variables à PC2
+fviz_contrib(res.pca, choice = "var", axes = 2, top = 10)
+
+#### La contribution totale à PC1 et PC2 est obtenue avec le code R suivant:
+fviz_contrib(res.pca, choice = "var", axes = 1:2, top = 10)
+#### Les variables les plus importantes (ou, contributives) peuvent être mises en évidence sur le graphe de corrélation comme suit:
+fviz_pca_var(res.pca, col.var = "contrib",
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07")
+)
+#### Changez la transparence en fonction de contrib
+fviz_pca_var(res.pca, alpha.var = "contrib")
+
+## 4.5 Colorer par groupes
+### a. Contributions des variables aux axes principaux
+#### Description des dimensions
+res.desc <- dimdesc(res.pca, axes = c(1,2), proba = 0.05)
+#### Description de la dimension 1
+res.desc$Dim.1
+#### Description de la dimension 2
+res.desc$Dim.2
+## 4.6 Graphique des individus
+#### Résultats
+ind <- get_pca_ind(res.pca)
+ind
+### a. Pour accéder aux différents éléments, utilisez ceci:
+#### Coordonnées des individus
+head(ind$coord)
+#### Qualité des individus
+head(ind$cos2)
+#### Contributions des individus
+head(ind$contrib)
+## 4.7 Graphique: qualité et contribution
+fviz_pca_ind (res.pca)
+#### colorer les individus en fonction de leurs valeurs de cos2:
+fviz_pca_ind (res.pca, col.ind = "cos2",
+              gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+              repel = TRUE # Évite le chevauchement de texte
+)
+#### modifier la taille des points en fonction du cos2 des individus correspondants:
+fviz_pca_ind (res.pca, pointsize = "cos2",
+              pointshape = 21, fill = "#E7B800",
+              repel = TRUE # Évite le chevauchement de texte
+)
+#### modifier la taille et la couleur des points en fonction du cos2, essayez ceci:
+fviz_pca_ind(res.pca, col.ind = "cos2", pointsize = "cos2",
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE 
+)
+####  pour créer bar plot de la qualité de représentation (cos2) des individus, vous pouvez utiliser la fonction fviz_cos2()
+fviz_cos2(res.pca, choice = "ind")
+#### Contribution totale sur PC1 et PC2
+fviz_contrib(res.pca, choice = "ind", axes = 1:2)
+
+### Pour ajouter une ellipse de concentration autour de chaque groupe, spécifiez l’argument addEllipses = TRUE. L’argument palette peut être utilisé pour changer les couleurs du groupe.
+fviz_pca_ind(res.pca, 
+             addEllipses = FALSE,
+             habillage=INRAT$NOM,
+             repel = TRUE)
+
+################################################################################
+################################################################################
+
+# PArtie 2 : Ensilage :
+#### Colorer par groupes
+INRAT <- read.csv("LE CHEMIN DU FICHIER -> INRA2018C.csv", header=T, sep=";")   
+
+EINRAT<- INRAT %>%
+  filter(NOM %in% c("ENSILAGESMAIS","ENSILAGESORGE","ENSILAGESBLE"))
+
+rownames(EINRAT) = EINRAT$Code # la première colonne (occupation des sosl) est intégrer comme label
+EINRAT[1] <- NULL
+
+# 3. extraire les individus actifs et les variables actives pour l’ACP
+EINRATA <- EINRAT[c(3:91)]
+
+EINRAT <- EINRAT %>% mutate_if(is.character, as.factor)
+
+res.pca <- PCA(EINRATA, graph = FALSE)
+
+fviz_pca_ind(res.pca, 
+             addEllipses = FALSE,
+             habillage=EINRAT$NOM,
+             repel = TRUE)
+
+
+
+
+################################################################################
+
+# sources :
+# http://www.sthda.com/french/wiki/wiki.php?title=fviz-pca-visualisation-de-l-analyse-en-composante-principale-logiciel-r-et-analyse-de-donn-es
+# http://www.sthda.com/english/wiki/wiki.php?title=factoextra-r-package-easy-multivariate-data-analyses-and-elegant-visualization
+# http://www.sthda.com/english/articles/22-principal-component-methods-videos/67-ca-in-r-using-factominer-quick-scripts-and-videos
+
